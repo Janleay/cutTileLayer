@@ -1,0 +1,74 @@
+#topbar {
+    padding: 10px;
+    width: 190px;
+}
+
+.style-button {
+    margin: 3px;
+}
+
+.funPanel {
+    position: absolute;
+    top: 30px;
+    right: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+    height: 160px;
+    background-color: rgba(105, 105, 120, 0.6);
+    padding: 10px;
+}
+
+.row {
+    width: 100%;
+    height: 36px;
+    margin-left: 4px;
+    display: flex;
+    justify-content: space-around;
+}
+
+input {
+    width: 100px;
+    height: 30px;
+    margin-right: 15px;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.text {
+    color: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+    line-height: 30px;
+}
+
+.btn {
+    width: 100px;
+    height: 30px;
+    color: #fff;
+    background-color: #5b9157;
+    border-radius: 0.04rem;
+    text-align: center;
+    line-height: 30px;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background-color: #83f77b;
+}
+
+.drawBtn {
+    width: 60px;
+    height: 30px;
+    /* margin: 0.1rem 0.05rem; */
+    text-align: center;
+    line-height: 30px;
+    background-color: rgba(100, 226, 236, 0.6);
+    cursor: pointer;
+    border-radius: 0.04rem;
+    color: #f3f3f3;
+}
+
+.selected,
+.drawBtn:hover {
+    background-color: rgba(252, 211, 45, 0.8);
+}
