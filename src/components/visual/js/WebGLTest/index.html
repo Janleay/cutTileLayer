@@ -1,0 +1,218 @@
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <title> Ground Modifications | Sample | ArcGIS API for JavaScript 4.30</title>
+    <style>
+        html,
+        body,
+        #viewDiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+
+    <link rel="stylesheet" href="https://js.arcgis.com/4.30/esri/themes/dark/main.css" />
+    <script src="https://js.arcgis.com/4.30/"></script>
+
+    <script>
+        require([
+            "esri/layers/BaseElevationLayer",
+            "esri/geometry/SpatialReference",
+            "esri/geometry/Polygon",
+            "esri/Graphic",
+            "esri/widgets/Sketch",
+            "esri/layers/GraphicsLayer",
+            "esri/Map",
+            "esri/views/SceneView",
+            "esri/layers/ElevationLayer",
+            "esri/layers/support/SceneFilter",
+        ], function(
+            BaseElevationLayer,
+            SpatialReference,
+            Polygon,
+            Graphic,
+            Sketch,
+            GraphicsLayer,
+            Map,
+            SceneView,
+            ElevationLayer,
+            SceneFilter
+        ) {
+            const defaultElevation = new ElevationLayer({
+                url: "https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/TopoBathy3D/ImageServer"
+            });
+            const modifications = new GraphicsLayer({
+                elevationInfo: {
+                    mode: "absolute-height"
+                }
+            });
+            const map = new Map({
+                basemap: "topo-3d",
+                ground: {
+                    layers: [defaultElevation]
+                },
+                layers: [modifications]
+            });
+            const view = new SceneView({
+                container: "viewDiv",
+                map: map,
+                camera: {
+                    position: [
+                        116.39307867,
+                        40.01599850,
+                        135.07535
+                    ],
+                    heading: 360.00,
+                    tilt: 49.44
+                },
+                environment: {
+                    lighting: {
+                        directShadowsEnabled: true
+                    }
+                }
+            });
+            view.popup.defaultPopupTemplateEnabled = true;
+            const sketch = new Sketch({
+                view: view,
+                layer: modifications,
+                availableCreateTools: ["polygon", "rectangle", "circle"],
+                creationMode: "update"
+            });
+            view.ui.add(sketch, "top-right");
+            const initial = new Graphic({
+                symbol: sketch.viewModel.polygonSymbol,
+                geometry: new Polygon({
+                    hasZ: true,
+                    spatialReference: SpatialReference.WebMercator,
+                    rings: [
+                        [12956873.894257205, 4868450.796367357, 34.329343723133206],
+                        [12956857.974256687, 4868425.193507225, 34.329343723133206],
+                        [12956844.577896724, 4868461.438391426, 34.329343723133206],
+                        [12956873.894257205, 4868450.796367357, 34.329343723133206]
+                    ]
+                })
+            });
+            modifications.add(initial);
+            view.when(async function() {
+                const defaultElevation = view.map.ground.layers.getItemAt(0);
+                const height = 256;
+                const width = 256;
+                const canvas = document.createElement("canvas");
+                canvas.id = "canvas";
+                class GroundModifications extends BaseElevationLayer {
+                    constructor(area) {
+                        super();
+                        this.area = area;
+                    }
+                    load(signal) {
+                        const promise = defaultElevation.load(signal).then(() => {
+                            this.tileInfo = defaultElevation.tileInfo;
+                            this.spatialReference = defaultElevation.spatialReference;
+                        });
+                        this.fullExtent = this.area.extent;
+                        return this.addResolvingPromise(promise);
+                    }
+                    async fetchTile(level, row, col, options) {
+                        const [xmin, ymin, xmax, ymax] = this.getTileBounds(level, row, col);
+                        const noDataValue = options.noDataValue || 3.4028234663852886e37;
+                        const data = {
+                            width: width,
+                            height: height,
+                            values: new Array(width * height).fill(noDataValue),
+                            noDataValue: noDataValue,
+                            maxZError: 0
+                        };
+                        canvas.height = height;
+                        canvas.width = width;
+                        const ctx = canvas.getContext("2d", {
+                            willReadFrequently: true
+                        });
+                        ctx.fillStyle = "white";
+                        ctx.fillRect(0, 0, width, height);
+                        const area = this.area;
+                        const zmin = area.extent.zmin;
+                        const dx = width / (xmax - xmin);
+                        const dy = height / (ymax - ymin);
+                        area.rings.forEach(function(ring) {
+                            ctx.fillStyle = "black";
+                            ctx.strokeStyle = "black";
+                            ctx.lineWidth = 0;
+                            ctx.beginPath();
+                            if (2 < ring.length) {
+                                ring.forEach(function(v, index) {
+                                    const x = (v[0] - xmin) * dx;
+                                    const y = (ymax - v[1]) * dy;
+                                    if (0 === index) {
+                                        ctx.moveTo(x, y);
+                                    } else {
+                                        ctx.lineTo(x, y);
+                                    }
+                                });
+                            }
+                            ctx.closePath();
+                            ctx.fill();
+                            ctx.stroke();
+                        });
+                        const imageData = ctx.getImageData(0, 0, width, height);
+                        console.log(111, imageData)
+                        const pixels = imageData.data;
+                        for (let i = 0; i < data.values.length; i++) {
+                            const red = pixels[i * 4];
+                            if (red < 100) {
+                                data.values[i] = zmin;
+                            }
+                        }
+                        options.signal.throwIfAborted();
+                        return data;
+                    }
+                }
+                let lastGrounds = [];
+                const updateGround = function() {
+                    view.map.ground.layers.removeMany(lastGrounds);
+                    const geometries = modifications.graphics
+                        .map(function(g) {
+                            return g.geometry;
+                        })
+                        .filter(function(g) {
+                            return g.type === "polygon";
+                        });
+                    lastGrounds = geometries
+                        .map(function(polygon) {
+                            return new GroundModifications(polygon);
+                        });
+                    view.map.ground.layers.addMany(lastGrounds);
+                    map.allLayers.forEach(function(layer) {
+                        if (layer.type === "scene") {
+                            layer.filter = new SceneFilter({
+                                geometries: geometries
+                            });
+                        }
+                    });
+                };
+                updateGround();
+                sketch.update(initial);
+                sketch.on("update", async function(e) {
+                    if (e.state === "complete") {
+                        updateGround();
+                    }
+                });
+                sketch.on("create", async function(e) {
+                    if (e.state === "complete") {
+                        updateGround();
+                    }
+                });
+            });
+        });
+    </script>
+</head>
+
+<body>
+<div id="viewDiv"></div>
+</body>
+
+</html>

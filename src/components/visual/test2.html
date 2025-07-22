@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>ArcGIS Elevation Layer Cutout with Shader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.28/"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1E40AF',
+                        secondary: '#3B82F6',
+                        accent: '#93C5FD',
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                },
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .map-container {
+                height: calc(100vh - 4rem);
+            }
+            .control-panel {
+                @apply bg-white/90 p-4 rounded-lg shadow-lg backdrop-blur-sm border border-gray-200;
+            }
+            .btn-primary {
+                @apply bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded transition-all duration-200;
+            }
+            .btn-secondary {
+                @apply bg-secondary hover:bg-secondary/90 text-white font-medium py-2 px-4 rounded transition-all duration-200;
+            }
+            .input-control {
+                @apply border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50 w-full;
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50">
+<header class="bg-gradient-to-r from-primary to-secondary text-white shadow-md">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+        <h1 class="text-2xl font-bold flex items-center">
+            <i class="fa fa-map-marker mr-2"></i>
+            <span>地形挖空演示</span>
+        </h1>
+        <div class="flex items-center space-x-2">
+            <button id="resetView" class="bg-white/20 hover:bg-white/30 transition-all duration-200 px-3 py-1 rounded text-sm">
+                <i class="fa fa-refresh mr-1"></i>重置视图
+            </button>
+            <button id="toggleCutout" class="bg-white/20 hover:bg-white/30 transition-all duration-200 px-3 py-1 rounded text-sm">
+                <i class="fa fa-magic mr-1"></i>切换挖空
+            </button>
+        </div>
+    </div>
+</header>
+
+<main class="container mx-auto px-4 py-4">
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div class="lg:col-span-1 order-2 lg:order-1">
+            <div class="control-panel">
+                <h2 class="text-lg font-semibold mb-3 text-primary border-b border-gray-200 pb-2">
+                    <i class="fa fa-sliders mr-1"></i>挖空控制
+                </h2>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">挖空中心经度</label>
+                        <input type="number" id="cutoutLng" class="input-control" value="116.391" step="0.001">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">挖空中心纬度</label>
+                        <input type="number" id="cutoutLat" class="input-control" value="39.904" step="0.001">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">挖空半径 (千米)</label>
+                        <input type="range" id="cutoutRadius" class="w-full" min="1" max="50" value="10">
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span>1km</span>
+                            <span id="radiusValue">10km</span>
+                            <span>50km</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">挖空深度 (米)</label>
+                        <input type="range" id="cutoutDepth" class="w-full" min="10" max="1000" value="500">
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span>10m</span>
+                            <span id="depthValue">500m</span>
+                            <span>1000m</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">挖空边缘平滑度</label>
+                        <input type="range" id="cutoutSmoothness" class="w-full" min="0.01" max="0.5" step="0.01" value="0.1">
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span>锋利</span>
+                            <span id="smoothnessValue">适中</span>
+                            <span>平滑</span>
+                        </div>
+                    </div>
+
+                    <button id="applyCutout" class="btn-primary w-full mt-2">
+                        <i class="fa fa-check mr-1"></i>应用挖空
+                    </button>
+                </div>
+            </div>
+
+            <div class="control-panel mt-4">
+                <h2 class="text-lg font-semibold mb-3 text-primary border-b border-gray-200 pb-2">
+                    <i class="fa fa-info-circle mr-1"></i>使用说明
+                </h2>
+                <ul class="text-sm text-gray-700 space-y-2">
+                    <li class="flex items-start">
+                        <i class="fa fa-check-circle text-green-500 mt-0.5 mr-2"></i>
+                        <span>调整参数以定义挖空区域的位置和形状</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fa fa-check-circle text-green-500 mt-0.5 mr-2"></i>
+                        <span>点击"应用挖空"按钮更新效果</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fa fa-check-circle text-green-500 mt-0.5 mr-2"></i>
+                        <span>使用"切换挖空"按钮显示或隐藏效果</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fa fa-info-circle text-blue-500 mt-0.5 mr-2"></i>
+                        <span>使用鼠标滚轮缩放，按住鼠标右键拖动旋转视角</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="lg:col-span-3 order-1 lg:order-2">
+            <div id="viewDiv" class="map-container rounded-lg shadow-xl border border-gray-200"></div>
+        </div>
+    </div>
+</main>
+
+<script>
+    require([
+        "esri/Map",
+        "esri/views/SceneView",
+        "esri/layers/ElevationLayer",
+        "esri/renderers/ShaderRenderer",
+        // "esri/core/watchUtils",
+        "esri/widgets/Home",
+        "esri/widgets/Zoom",
+        "esri/widgets/Compass",
+        "esri/widgets/Search",
+        "esri/widgets/LayerList"
+    ], function(
+        Map, SceneView, ElevationLayer, ShaderRenderer,
+        Home, Zoom, Compass, Search, LayerList
+    ) {
+        // 初始化地图
+        const map = new Map({
+            basemap: "hybrid",
+            ground: "world-elevation"
+        });
+
+        // 创建视图
+        const view = new SceneView({
+            container: "viewDiv",
+            map: map,
+            camera: {
+                position: [116.391, 39.904, 15000],
+                tilt: 60
+            },
+            environment: {
+                lighting: {
+                    date: new Date(),
+                    directShadowsEnabled: true,
+                    ambientOcclusionEnabled: true
+                }
+            },
+            constraints: {
+                tilt: {
+                    min: 0,
+                    max: 85
+                }
+            }
+        });
+
+        // 添加控件
+        view.ui.add(new Home(), "top-left");
+        view.ui.add(new Zoom(), "top-left");
+        view.ui.add(new Compass(), "top-left");
+        view.ui.add(new Search(), "top-right");
+        view.ui.add(new LayerList(), "top-right");
+
+        // 创建自定义高程图层
+        const elevationLayer = new ElevationLayer({
+            url: "https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer",
+            title: "自定义高程"
+        });
+
+        // 等待视图加载完成
+        view.when(() => {
+            // 添加高程图层
+            map.ground.layers.add(elevationLayer);
+
+            // 初始挖空参数
+            let cutoutParams = {
+                enabled: true,
+                center: [116.391, 39.904], // 北京中心点
+                radius: 10000, // 10公里
+                depth: 500, // 500米
+                smoothness: 0.1 // 平滑度
+            };
+
+            // 应用着色器
+            applyShader(cutoutParams);
+
+            // 视图加载完成后添加提示
+            setTimeout(() => {
+                showNotification("提示", "使用右侧控制面板调整挖空效果参数");
+            }, 1500);
+        });
+
+        // 应用着色器函数
+        function applyShader(params) {
+            if (!elevationLayer.renderer || params.enabled) {
+                // 定义着色器
+                const renderer = new ShaderRenderer({
+                    vertexShader: `
+              void main() {
+                // 调用默认顶点着色器
+                gl_Position = vertexStage();
+              }
+            `,
+                    fragmentShader: `
+              // 从JavaScript传递的统一变量
+              uniform vec2 u_cutoutCenter; // 挖空中心经纬度
+              uniform float u_cutoutRadius; // 挖空半径（米）
+              uniform float u_cutoutDepth; // 挖空深度（米）
+              uniform float u_smoothness; // 边缘平滑度
+
+              void main() {
+                // 获取当前像素的经纬度
+                vec4 lonLat = fragmentPosition;
+
+                // 计算与挖空中心的距离（简化版，实际应该使用球面距离）
+                float dx = (lonLat.x - u_cutoutCenter.x) * cos(radians(u_cutoutCenter.y)) * 111320.0;
+                float dy = (lonLat.y - u_cutoutCenter.y) * 110574.0;
+                float distance = sqrt(dx * dx + dy * dy);
+
+                // 计算挖空效果的权重（0-1范围）
+                float weight = smoothstep(u_cutoutRadius, u_cutoutRadius * (1.0 - u_smoothness), distance);
+
+                // 获取原始高度值
+                float originalHeight = fragmentElevation;
+
+                // 计算挖空后的高度
+                float modifiedHeight = originalHeight - u_cutoutDepth * (1.0 - weight);
+
+                // 应用挖空效果
+                fragmentElevation = modifiedHeight;
+
+                // 调用默认片段着色器
+                vec4 fragmentColor = fragmentStage();
+
+                // 为了可视化挖空区域，在边缘添加一个半透明的蓝色
+                if (distance < u_cutoutRadius) {
+                  float edgeFactor = 1.0 - smoothstep(u_cutoutRadius * (1.0 - u_smoothness * 2.0), u_cutoutRadius, distance);
+                  fragmentColor = mix(fragmentColor, vec4(0.0, 0.5, 1.0, 0.3), edgeFactor * 0.7);
+                }
+
+                gl_FragColor = fragmentColor;
+              }
+            `,
+                    uniforms: {
+                        u_cutoutCenter: {
+                            type: "vec2",
+                            value: params.center
+                        },
+                        u_cutoutRadius: {
+                            type: "float",
+                            value: params.radius
+                        },
+                        u_cutoutDepth: {
+                            type: "float",
+                            value: params.depth
+                        },
+                        u_smoothness: {
+                            type: "float",
+                            value: params.smoothness
+                        }
+                    }
+                });
+
+                // 应用着色器渲染器
+                elevationLayer.renderer = renderer;
+            } else {
+                // 禁用着色器
+                elevationLayer.renderer = null;
+            }
+        }
+
+        // DOM 事件处理
+        document.getElementById("applyCutout").addEventListener("click", () => {
+            const lng = parseFloat(document.getElementById("cutoutLng").value);
+            const lat = parseFloat(document.getElementById("cutoutLat").value);
+            const radius = parseFloat(document.getElementById("cutoutRadius").value) * 1000; // 转换为米
+            const depth = parseFloat(document.getElementById("cutoutDepth").value);
+            const smoothness = parseFloat(document.getElementById("cutoutSmoothness").value);
+
+            cutoutParams = {
+                ...cutoutParams,
+                center: [lng, lat],
+                radius: radius,
+                depth: depth,
+                smoothness: smoothness,
+                enabled: true
+            };
+
+            applyShader(cutoutParams);
+            showNotification("成功", "挖空效果已更新");
+        });
+
+        document.getElementById("toggleCutout").addEventListener("click", () => {
+            cutoutParams.enabled = !cutoutParams.enabled;
+            applyShader(cutoutParams);
+            showNotification(
+                cutoutParams.enabled ? "挖空已启用" : "挖空已禁用",
+                cutoutParams.enabled ? "使用着色器修改地形高度" : "恢复原始地形显示"
+            );
+        });
+
+        document.getElementById("resetView").addEventListener("click", () => {
+            view.goTo({
+                position: [116.391, 39.904, 15000],
+                tilt: 60
+            });
+            showNotification("视图已重置", "回到初始视角");
+        });
+
+        // 实时更新滑块显示值
+        document.getElementById("cutoutRadius").addEventListener("input", (e) => {
+            document.getElementById("radiusValue").textContent = `${e.target.value}km`;
+        });
+
+        document.getElementById("cutoutDepth").addEventListener("input", (e) => {
+            document.getElementById("depthValue").textContent = `${e.target.value}m`;
+        });
+
+        document.getElementById("cutoutSmoothness").addEventListener("input", (e) => {
+            const value = parseFloat(e.target.value);
+            let text = "锋利";
+            if (value > 0.3) text = "平滑";
+            else if (value > 0.15) text = "适中";
+            document.getElementById("smoothnessValue").textContent = text;
+        });
+
+        // 显示通知函数
+        function showNotification(title, message) {
+            const notification = document.createElement("div");
+            notification.className = "fixed top-4 right-4 bg-white rounded-lg shadow-lg p-4 transform transition-all duration-300 translate-x-full z-50 border-l-4 border-primary";
+            notification.innerHTML = `
+          <div class="flex items-start">
+            <div class="flex-shrink-0">
+              <i class="fa fa-info-circle text-primary text-xl"></i>
+            </div>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-gray-800">${title}</h3>
+              <div class="mt-1 text-sm text-gray-600">${message}</div>
+            </div>
+            <button class="ml-auto flex-shrink-0 text-gray-400 hover:text-gray-600 focus:outline-none">
+              <i class="fa fa-times"></i>
+            </button>
+          </div>
+        `;
+
+            document.body.appendChild(notification);
+
+            // 显示通知
+            setTimeout(() => {
+                notification.classList.remove("translate-x-full");
+            }, 100);
+
+            // 自动关闭
+            setTimeout(() => {
+                notification.classList.add("translate-x-full", "opacity-0");
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+
+            // 点击关闭
+            notification.querySelector("button").addEventListener("click", () => {
+                notification.classList.add("translate-x-full", "opacity-0");
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            });
+        }
+    });
+</script>
+</body>
+</html>

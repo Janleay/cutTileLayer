@@ -1,0 +1,80 @@
+{
+  "name": "geoscene-js",
+  "version": "0.1.0",
+  "private": true,
+  "homepage": ".",
+  "dependencies": {
+    "@deck.gl/arcgis": "^8.7.8",
+    "@deck.gl/core": "^8.9.1",
+    "@deck.gl/geo-layers": "^8.9.1",
+    "@deck.gl/layers": "^8.9.1",
+    "@deck.gl/mesh-layers": "^8.9.1",
+    "@emotion/react": "^11.8.1",
+    "@emotion/styled": "^11.8.1",
+    "@esri/calcite-components": "^1.0.0-beta.93",
+    "@geoscene/core": "^4.27.2",
+    "@testing-library/jest-dom": "^5.16.4",
+    "@testing-library/react": "^13.3.0",
+    "@testing-library/user-event": "^13.5.0",
+    "@turf/random": "^6.5.0",
+    "antd": "^5.4.2",
+    "axios": "^0.21.4",
+    "babel-runtime": "^6.26.0",
+    "buffer": "^6.0.3",
+    "chart.js": "^2.9.4",
+    "deck.gl": "^8.9.1",
+    "dompurify": "^3.0.1",
+    "draft-js": "^0.11.7",
+    "draftjs-to-html": "^0.9.1",
+    "element-react": "^1.4.34",
+    "element-theme-default": "^1.4.13",
+    "esri": "^0.0.1-security",
+    "font-awesome": "^4.7.0",
+    "fontkit": "^2.0.2",
+    "jquery": "^3.6.0",
+    "jszip": "^3.10.1",
+    "mock-geolocation": "^1.0.11",
+    "npm": "^6.14.18",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-draft-wysiwyg": "^1.15.0",
+    "react-hot-loader": "^4.5.3",
+    "react-modal": "^3.14.3",
+    "react-router-dom": "^5.3.3",
+    "react-scoped-style": "^0.3.0",
+    "react-scripts": "5.0.1",
+    "three": "^0.109.0",
+    "threejs-meshline": "^2.0.0",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ],
+    "rules": {
+      "jsx-a11y/anchor-is-valid": "off"
+    }
+  },
+  "browserslist": {
+    "production": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@arcgis/core": "^4.28.6"
+  }
+}
