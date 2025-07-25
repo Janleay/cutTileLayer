@@ -121,7 +121,7 @@ export class ElevationExaggerationModule extends React.Component {
                 };
                 that.sketchLayer.add(graphic);
 
-                that.volumn = 0;
+                that.state.volumn = 0;
                 let sketchGeometry = event.graphic.geometry
 
                 let area = geometryEngine.geodesicArea(sketchGeometry, "square-meters");
@@ -249,7 +249,7 @@ export class ElevationExaggerationModule extends React.Component {
                 // let averageH = count / len;
                 let depth = that.state.depth * -1
                 if ((hight - that.minHight + depth) > 0) {
-                    that.volumn += (hight - that.minHight + depth) * area;
+                    that.state.volumn += (hight - that.minHight + depth) * area;
                 }
             }
         }
@@ -475,7 +475,11 @@ export class ElevationExaggerationModule extends React.Component {
                     </div>
                     <div className={styles.row}>
                         <span className={styles.text}>开挖挖方：</span>
-                        <input type='number' id="volumnInput" min='0' value="0"/>
+                        <input
+                            type='number'
+                            id="volumnInput"
+                            value={this.state.volumn}
+                        />
                         <span className={styles.text}>立方米</span>
                     </div>
                     <div className={styles.row}>

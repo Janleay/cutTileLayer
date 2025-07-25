@@ -21,19 +21,6 @@ const CutBaseTileLayer = BaseTileLayer.createSubclass({
         return this.addResolvingPromise(loadPromise);
     },
 
-    getTileBounds: function (level, row, col) {
-        const lod = this.tileInfo.lods[level];
-        const resolution = lod.resolution;
-        const tileSize = this.tileInfo.size[0] * resolution;
-
-        const xmin = this.fullExtent.xmin + col * tileSize;
-        const ymin = this.fullExtent.ymax - (row + 1) * tileSize;
-        const xmax = xmin + tileSize;
-        const ymax = ymin + tileSize;
-
-        return [xmin, ymin, xmax, ymax];
-    },
-
     fetchTile: function (level, row, col, options) {
         const [xmin, ymin, xmax, ymax] = this.getTileBounds(level, row, col);
         const width = 256;
